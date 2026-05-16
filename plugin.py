@@ -358,61 +358,71 @@ class BasePlugin:
 
         # --- Storage / RAID ---
         try:
-            storage = ilo.get_embedded_health()
-            # Log alle beschikbare health keys en hun type
-            if isinstance(storage, dict):
+            # Hergebruik de reeds opgehaalde health-data (geen extra netwerkaanroep nodig)
+            storage = health
+            # Log alle beschikbare health keys en hun type (inclusief None-waarden)
+            if isinstance(storage, dict) and self._debug:
                 for k, v in storage.items():
-                    if v is not None:
-                        Domoticz.Log(f"DEBUG health[{k}]: {str(v)[:200]}")
-            storage_data = storage.get("storage", []) if isinstance(storage, dict) else []
+                    Domoticz.Log(f"DEBUG health[{k}]: {str(v)[:200]}")
+            # Gebruik `or []` zodat ook een None-waarde correct als lege lijst behandeld wordt
+            storage_raw = storage.get("storage") if isinstance(storage, dict) else None
+            if self._debug:
+                Domoticz.Log(f"DEBUG storage raw type={type(storage_raw).__name__} value={str(storage_raw)[:200]}")
             not_ok = []
             ok_parts = []
 
-            # storage_data is een lijst van controllers
-            if isinstance(storage_data, list):
-                for ctrl in storage_data:
-                    if not isinstance(ctrl, dict):
+            # Normaliseer storage_data naar een lijst van controller-dicts
+            if isinstance(storage_raw, list):
+                storage_list = storage_raw
+            elif isinstance(storage_raw, dict):
+                # Sommige iLO-versies geven een dict terug: {naam: {...}, ...}
+                storage_list = list(storage_raw.values())
+            else:
+                storage_list = []
+
+            for ctrl in storage_list:
+                if not isinstance(ctrl, dict):
+                    continue
+                ctrl_label  = ctrl.get("label", "Controller")
+                ctrl_status = ctrl.get("status", "OK")
+                if ctrl_status and str(ctrl_status).upper() not in ("OK", ""):
+                    not_ok.append(f"{ctrl_label}: {ctrl_status}")
+                else:
+                    ok_parts.append(ctrl_label)
+                # Logical drives
+                for ld in ctrl.get("logical_drives", []):
+                    if not isinstance(ld, dict):
                         continue
-                    ctrl_label  = ctrl.get("label", "Controller")
-                    ctrl_status = ctrl.get("status", "OK")
-                    if ctrl_status and str(ctrl_status).upper() not in ("OK", ""):
-                        not_ok.append(f"{ctrl_label}: {ctrl_status}")
+                    ld_label  = ld.get("label", "Logical Drive")
+                    ld_status = ld.get("status", "OK")
+                    ld_cap    = ld.get("capacity", "")
+                    ld_fault  = ld.get("fault_tolerance", "")
+                    desc = ld_label
+                    if ld_cap:
+                        desc += f" {ld_cap}"
+                    if ld_fault:
+                        desc += f" ({ld_fault})"
+                    if ld_status and str(ld_status).upper() not in ("OK", ""):
+                        not_ok.append(f"{desc}: {ld_status}")
                     else:
-                        ok_parts.append(ctrl_label)
-                    # Logical drives
-                    for ld in ctrl.get("logical_drives", []):
-                        if not isinstance(ld, dict):
+                        ok_parts.append(desc)
+                    # Physical drives
+                    for pd in ld.get("physical_drives", []):
+                        if not isinstance(pd, dict):
                             continue
-                        ld_label  = ld.get("label", "Logical Drive")
-                        ld_status = ld.get("status", "OK")
-                        ld_cap    = ld.get("capacity", "")
-                        ld_fault  = ld.get("fault_tolerance", "")
-                        desc = ld_label
-                        if ld_cap:
-                            desc += f" {ld_cap}"
-                        if ld_fault:
-                            desc += f" ({ld_fault})"
-                        if ld_status and str(ld_status).upper() not in ("OK", ""):
-                            not_ok.append(f"{desc}: {ld_status}")
+                        pd_label  = pd.get("label", "Drive")
+                        pd_status = pd.get("status", "OK")
+                        pd_cap    = pd.get("capacity", "")
+                        pd_media  = pd.get("drive_type", pd.get("media_type", ""))
+                        desc = pd_label
+                        if pd_cap:
+                            desc += f" {pd_cap}"
+                        if pd_media:
+                            desc += f" ({pd_media})"
+                        if pd_status and str(pd_status).upper() not in ("OK", ""):
+                            not_ok.append(f"{desc}: {pd_status}")
                         else:
                             ok_parts.append(desc)
-                        # Physical drives
-                        for pd in ld.get("physical_drives", []):
-                            if not isinstance(pd, dict):
-                                continue
-                            pd_label  = pd.get("label", "Drive")
-                            pd_status = pd.get("status", "OK")
-                            pd_cap    = pd.get("capacity", "")
-                            pd_media  = pd.get("drive_type", pd.get("media_type", ""))
-                            desc = pd_label
-                            if pd_cap:
-                                desc += f" {pd_cap}"
-                            if pd_media:
-                                desc += f" ({pd_media})"
-                            if pd_status and str(pd_status).upper() not in ("OK", ""):
-                                not_ok.append(f"{desc}: {pd_status}")
-                            else:
-                                ok_parts.append(desc)
 
             if not_ok:
                 if UNIT_STORAGE in Devices:
@@ -422,7 +432,7 @@ class BasePlugin:
                     Devices[UNIT_STORAGE].Update(nValue=1, sValue="Alles OK: " + ", ".join(ok_parts))
             else:
                 if UNIT_STORAGE in Devices:
-                    Devices[UNIT_STORAGE].Update(nValue=0, sValue="Geen storage gevonden")
+                    Devices[UNIT_STORAGE].Update(nValue=0, sValue="Niet beschikbaar via iLO")
         except Exception as err:
             Domoticz.Error(f"Fout bij storage: {err}")
 
