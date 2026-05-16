@@ -62,19 +62,30 @@ In Domoticz, go to **Settings → Hardware** and add a new hardware device of ty
 
 After the first successful connection, the following Domoticz devices are created automatically:
 
+Device names are automatically prefixed with a server identifier in this order:
+1. Asset tag
+2. Serial number
+3. Server name
+4. Configured iLO host/IP
+
+Example: `[ASSET-1234] Server Name`
+
 | Unit | Name | Description |
 |------|------|-------------|
-| 1 | Server Name | Name of the server |
-| 2 | Server FQDN | Fully qualified domain name |
-| 3 | Server Power State | Power status (on/off) |
-| 4 | Server Power Readings | Current, average, max, and min power |
-| 5 | Server Power On Time (min) | Time powered on in minutes |
-| 6 | Server Asset Tag | Server asset tag |
-| 7 | Server UID Light | UID light status |
-| 8 | Server Health | Hardware health overview |
-| 9 | Network Settings | IP address, subnet mask, gateway, DNS, and MAC |
-| 10 | Server Host Data | Raw host data |
-| 11 | Server OA Info | Onboard Administrator information |
+| 1 | `[identifier] Server Name` | Name of the server |
+| 2 | `[identifier] Server FQDN` | Fully qualified domain name |
+| 3 | `[identifier] Server Power State` | Power status (on/off) |
+| 4 | `[identifier] Server Power On Time` | Time powered on |
+| 5 | `[identifier] Server Asset Tag` | Server asset tag |
+| 6 | `[identifier] Server UID Light` | UID light status |
+| 7 | `[identifier] Server Health` | Hardware health overview |
+| 8 | `[identifier] Network Settings` | IP address, subnet mask, gateway, DNS, and MAC |
+| 9 | `[identifier] Server Host Data` | Key host data (product/serial/etc.) |
+| 10 | `[identifier] Fan 1 Speed` | Fan speed |
+| 11 | `[identifier] CPU Temperature` | CPU temperature |
+| 12 | `[identifier] Inlet Ambient Temperature` | Inlet temperature |
+| 13 | `[identifier] iLO Firmware Version` | iLO firmware version |
+| 14 | `[identifier] Storage Status` | Storage/RAID health |
 
 ---
 
