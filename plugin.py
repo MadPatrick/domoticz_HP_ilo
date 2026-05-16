@@ -312,7 +312,8 @@ class BasePlugin:
             update(UNIT_NETWORK_SETTINGS, str(net)[:300])
 
         # --- Host data: toon alleen de meest relevante velden ---
-        IMPORTANT_KEYS = {"product name", "serial number", "family", "date"}
+        IMPORTANT_KEYS_ORDER = ("product name", "serial number", "family", "date")
+        IMPORTANT_KEYS = set(IMPORTANT_KEYS_ORDER)
         host_data = safe_get(ilo.get_host_data)
         if isinstance(host_data, list):
             collected = {}
@@ -324,7 +325,7 @@ class BasePlugin:
                     if norm in IMPORTANT_KEYS and norm not in collected:
                         if isinstance(val, str) and val.strip() and val.isprintable():
                             collected[norm] = (key.replace("_", " ").title(), val.strip())
-            ordered = [collected[k] for k in ("product name", "serial number", "family", "date") if k in collected]
+            ordered = [collected[k] for k in IMPORTANT_KEYS_ORDER if k in collected]
             update(UNIT_SERVER_HOST_DATA, " | ".join(f"{lbl}: {v}" for lbl, v in ordered) if ordered else "N/A")
         elif isinstance(host_data, dict):
             collected = {}
@@ -333,7 +334,7 @@ class BasePlugin:
                 if norm in IMPORTANT_KEYS and norm not in collected:
                     if isinstance(val, str) and val.strip() and val.isprintable():
                         collected[norm] = (key.replace("_", " ").title(), val.strip())
-            ordered = [collected[k] for k in ("product name", "serial number", "family", "date") if k in collected]
+            ordered = [collected[k] for k in IMPORTANT_KEYS_ORDER if k in collected]
             update(UNIT_SERVER_HOST_DATA, " | ".join(f"{lbl}: {v}" for lbl, v in ordered) if ordered else "N/A")
         else:
             update(UNIT_SERVER_HOST_DATA, str(host_data)[:300])
