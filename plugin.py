@@ -311,27 +311,30 @@ class BasePlugin:
         else:
             update(UNIT_NETWORK_SETTINGS, str(net)[:300])
 
-        # --- Host data: toon alleen leesbare velden, filter rommel ---
-        SKIP_KEYS = {"b64_data", "uuid", "cuuid", "b64data"}
+        # --- Host data: toon alleen de meest relevante velden ---
+        IMPORTANT_KEYS = {"product name", "serial number", "family", "date"}
         host_data = safe_get(ilo.get_host_data)
         if isinstance(host_data, list):
-            parts = []
+            collected = {}
             for entry in host_data:
                 if not isinstance(entry, dict):
                     continue
                 for key, val in entry.items():
-                    if key.lower().replace(" ", "_") in SKIP_KEYS:
-                        continue
-                    if isinstance(val, str) and val.strip() and len(val) < 80:
-                        if val.isprintable() and not (chr(0) in val):
-                            parts.append(f"{key.replace('_',' ').title()}: {val.strip()}")
-            update(UNIT_SERVER_HOST_DATA, " | ".join(parts) if parts else "N/A")
+                    norm = key.lower().strip()
+                    if norm in IMPORTANT_KEYS and norm not in collected:
+                        if isinstance(val, str) and val.strip() and val.isprintable():
+                            collected[norm] = (key.replace("_", " ").title(), val.strip())
+            ordered = [collected[k] for k in ("product name", "serial number", "family", "date") if k in collected]
+            update(UNIT_SERVER_HOST_DATA, " | ".join(f"{lbl}: {v}" for lbl, v in ordered) if ordered else "N/A")
         elif isinstance(host_data, dict):
-            parts = [f"{k.replace('_',' ').title()}: {v}"
-                     for k, v in host_data.items()
-                     if k.lower().replace(" ", "_") not in SKIP_KEYS
-                     and isinstance(v, str) and v.strip() and len(v) < 80]
-            update(UNIT_SERVER_HOST_DATA, " | ".join(parts) if parts else "N/A")
+            collected = {}
+            for key, val in host_data.items():
+                norm = key.lower().strip()
+                if norm in IMPORTANT_KEYS and norm not in collected:
+                    if isinstance(val, str) and val.strip() and val.isprintable():
+                        collected[norm] = (key.replace("_", " ").title(), val.strip())
+            ordered = [collected[k] for k in ("product name", "serial number", "family", "date") if k in collected]
+            update(UNIT_SERVER_HOST_DATA, " | ".join(f"{lbl}: {v}" for lbl, v in ordered) if ordered else "N/A")
         else:
             update(UNIT_SERVER_HOST_DATA, str(host_data)[:300])
 
