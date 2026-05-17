@@ -6,7 +6,7 @@ Author: Ported from HA hp_ilo integration
 Version: 1.0.0
 
 <plugin key="hp_ilo" name="HP Integrated Lights-Out (iLO)" author="MadPatrick"
-        version="1.0.0" externallink="https://www.home-assistant.io/integrations/hp_ilo">
+        version="1.0.0" wikillink="https://www.home-assistant.io/integrations/hp_ilo" externallink="https://github.com/MadPatrick/HP_ilo">
     <description>
         <h2>HP Integrated Lights-Out (iLO)</h2>
         Leest sensordata uit van een HP iLO interface.
@@ -36,7 +36,7 @@ Version: 1.0.0
 </plugin>
 """
 
-import Domoticz  # type: ignore  # alleen beschikbaar binnen Domoticz runtime
+import Domoticz  
 import hpilo
 from datetime import datetime
 
@@ -61,20 +61,20 @@ UNIT_STORAGE             = 14
 # Definitie: (unit, naam, type, subtype, opties-dict of None)
 #   Domoticz type 243 = Algemeen, subtype 19 = Tekst
 SENSOR_DEFINITIONS = [
-    (UNIT_SERVER_NAME,      "Server Name",                    243, 19, {}),
-    (UNIT_SERVER_FQDN,      "Server FQDN",                    243, 19, {}),
-    (UNIT_POWER_STATUS,     "Server Power State",             243, 19, {}),
-    (UNIT_POWER_ON_TIME,    "Server Power On Time",           243, 19, {}),
-    (UNIT_ASSET_TAG,        "Server Asset Tag",               243, 19, {}),
-    (UNIT_UID_STATUS,       "Server UID Light",               243, 19, {}),
-    (UNIT_HEALTH,           "Server Health",                  243, 22, {}),
-    (UNIT_NETWORK_SETTINGS, "Network Settings",               243, 19, {}),
-    (UNIT_SERVER_HOST_DATA, "Server Host Data",               243, 19, {}),
-    (UNIT_FANS,             "Fan 1 Speed",                     243,  6, {}),
-    (UNIT_CPU_TEMP,         "CPU Temperature",                 80,  5,  {"Custom": "1;C"}),
-    (UNIT_INLET_TEMP,       "Inlet Ambient Temperature",       80,  5,  {"Custom": "1;C"}),
-    (UNIT_STORAGE,          "Storage Status",                  243, 22, {}),
-    (UNIT_ILO_FIRMWARE,     "iLO Firmware Version",            243, 19, {}),
+    (UNIT_SERVER_NAME,      "Name",                    243, 19, {}),
+    (UNIT_SERVER_FQDN,      "FQDN",                    243, 19, {}),
+    (UNIT_POWER_STATUS,     "Power State",             243, 19, {}),
+    (UNIT_POWER_ON_TIME,    "Power On Time",           243, 19, {}),
+    (UNIT_ASSET_TAG,        "Asset Tag",               243, 19, {}),
+    (UNIT_UID_STATUS,       "UID Light",               243, 19, {}),
+    (UNIT_HEALTH,           "Health",                  243, 22, {}),
+    (UNIT_NETWORK_SETTINGS, "Network Settings",        243, 19, {}),
+    (UNIT_SERVER_HOST_DATA, "Host Data",               243, 19, {}),
+    (UNIT_FANS,             "Fan 1 Speed",             243,  6, {}),
+    (UNIT_CPU_TEMP,         "CPU Temperature",         80,  5,  {"Custom": "1;C"}),
+    (UNIT_INLET_TEMP,       "Inlet Temperature",       80,  5,  {"Custom": "1;C"}),
+    (UNIT_STORAGE,          "Storage Status",          243, 22, {}),
+    (UNIT_ILO_FIRMWARE,     "iLO FW Version",          243, 19, {}),
 ]
 
 
