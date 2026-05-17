@@ -9,27 +9,27 @@ Version: 1.0.0
         version="1.0.0" wikillink="https://www.home-assistant.io/integrations/hp_ilo" externallink="https://github.com/MadPatrick/HP_ilo">
     <description>
         <h2>HP Integrated Lights-Out (iLO)</h2>
-        Leest sensordata uit van een HP iLO interface.
+        Reads sensor data from an HP iLO interface.
         <h3>Parameters</h3>
-        Vul hieronder de verbindingsgegevens in voor uw HP iLO interface.
+        Enter the connection details for your HP iLO interface below.
     </description>
     <params>
-        <param field="Address"  label="IP-adres / Hostnaam" width="200px" required="true" default="192.168.1.1"/>
-        <param field="Port"     label="Poort"               width="75px"  required="true" default="443"/>
-        <param field="Username" label="Gebruikersnaam"      width="150px" required="true" default="Administrator"/>
-        <param field="Password" label="Wachtwoord"          width="150px" required="true" default="" password="true"/>
-        <param field="Mode1"    label="Poll-interval (sec)" width="75px"  required="true" default="300"/>
-        <param field="Mode2"    label="Protocol"            width="120px">
+        <param field="Address"  label="IP Address / Hostname" width="200px" required="true" default="192.168.1.1"/>
+        <param field="Port"     label="Port"                  width="75px"  required="true" default="443"/>
+        <param field="Username" label="Username"              width="150px" required="true" default="Administrator"/>
+        <param field="Password" label="Password"              width="150px" required="true" default="" password="true"/>
+        <param field="Mode1"    label="Poll interval (sec)"   width="75px"  required="true" default="300"/>
+        <param field="Mode2"    label="Protocol"              width="120px">
             <options>
-                <option label="Automatisch" value="AUTO" default="true"/>
+                <option label="Automatic" value="AUTO" default="true"/>
                 <option label="ILO (XML/SSL)" value="ILO"/>
-                <option label="LIPB (lokaal)" value="LIPB"/>
+                <option label="LIPB (local)" value="LIPB"/>
             </options>
         </param>
-        <param field="Mode6"    label="Debug"               width="100px">
+        <param field="Mode6"    label="Debug"                 width="100px">
             <options>
-                <option label="Uit"  value="0" default="true"/>
-                <option label="Aan"  value="1"/>
+                <option label="Off" value="0" default="true"/>
+                <option label="On"  value="1"/>
             </options>
         </param>
     </params>
@@ -41,7 +41,7 @@ import hpilo
 from datetime import datetime
 
 # ---------------------------------------------------------------------------
-# Apparaat-unit nummers (1-255, uniek per plugin-instantie)
+# Device unit numbers (1-255, unique per plugin instance)
 # ---------------------------------------------------------------------------
 UNIT_SERVER_NAME         = 1
 UNIT_SERVER_FQDN         = 2
@@ -58,8 +58,8 @@ UNIT_INLET_TEMP          = 12
 UNIT_ILO_FIRMWARE        = 13
 UNIT_STORAGE             = 14
 
-# Definitie: (unit, naam, type, subtype, opties-dict of None)
-#   Domoticz type 243 = Algemeen, subtype 19 = Tekst
+# Definition: (unit, name, type, subtype, options-dict or None)
+#   Domoticz type 243 = General, subtype 19 = Text
 SENSOR_DEFINITIONS = [
     (UNIT_SERVER_NAME,      "Name",                    243, 19, {}),
     (UNIT_SERVER_FQDN,      "FQDN",                    243, 19, {}),
@@ -79,11 +79,11 @@ SENSOR_DEFINITIONS = [
 
 
 class BasePlugin:
-    """Hoofd-plugin klasse die door Domoticz wordt aangeroepen."""
+    """Main plugin class called by Domoticz."""
 
     def __init__(self):
         self._ilo = None
-        self._poll_interval = 300  # seconden
+        self._poll_interval = 300  # seconds
         self._heartbeat_count = 0
         self._heartbeats_per_poll = 1
         self._debug = False
@@ -91,44 +91,44 @@ class BasePlugin:
         self._device_prefix = ""
 
     # ------------------------------------------------------------------
-    # Lifecycle-callbacks
+    # Lifecycle callbacks
     # ------------------------------------------------------------------
 
     def onStart(self):
         self._debug = Parameters["Mode6"] == "1"
         if self._debug:
             Domoticz.Debugging(1)
-            Domoticz.Log("Debug-modus ingeschakeld")
+            Domoticz.Log("Debug mode enabled")
 
-        # Poll-interval instellen (minimaal 10 sec, maximaal 3600 sec)
+        # Set poll interval (minimum 10 sec, maximum 3600 sec)
         try:
             self._poll_interval = max(10, min(3600, int(Parameters["Mode1"])))
         except ValueError:
             self._poll_interval = 300
 
-        # Domoticz heartbeat is standaard 10 seconden
+        # Domoticz heartbeat is 10 seconds by default
         heartbeat_sec = 10
         self._heartbeats_per_poll = max(1, self._poll_interval // heartbeat_sec)
         Domoticz.Heartbeat(heartbeat_sec)
 
         Domoticz.Log(
-            f"HP iLO plugin gestart - host={Parameters['Address']}:{Parameters['Port']} "
+            f"HP iLO plugin started - host={Parameters['Address']}:{Parameters['Port']} "
             f"poll={self._poll_interval}s"
         )
 
-        # Iconen laden (eenmalig, Domoticz slaat ze op)
+        # Load icons (once, Domoticz stores them)
         if "hpilo" not in Images:
             Domoticz.Image("hpilo_icons.zip").Create()
         self._icon_id = Images["hpilo"].ID if "hpilo" in Images else 0
 
-        # Ontbrekende Domoticz-apparaten aanmaken
+        # Create missing Domoticz devices
         self._create_devices()
 
-        # Directe eerste verbinding
+        # Initial first connection
         self._connect_and_update()
 
     def onStop(self):
-        Domoticz.Log("HP iLO plugin gestopt.")
+        Domoticz.Log("HP iLO plugin stopped.")
 
     def onHeartbeat(self):
         self._heartbeat_count += 1
@@ -137,11 +137,11 @@ class BasePlugin:
             self._connect_and_update()
 
     # ------------------------------------------------------------------
-    # Interne hulpfuncties
+    # Internal helper functions
     # ------------------------------------------------------------------
 
     def _create_devices(self):
-        """Maak ontbrekende Domoticz-apparaten aan."""
+        """Create missing Domoticz devices."""
         for unit, name, type_num, subtype, options in SENSOR_DEFINITIONS:
             if unit not in Devices:
                 icon = self._icon_id if unit != UNIT_HEALTH else 0
@@ -154,7 +154,7 @@ class BasePlugin:
                     Image=icon,
                     Used=1,
                 ).Create()
-                Domoticz.Log(f"Apparaat aangemaakt: {self._full_device_name(name)} (unit {unit})")
+                Domoticz.Log(f"Device created: {self._full_device_name(name)} (unit {unit})")
 
     def _full_device_name(self, base_name):
         if not self._device_prefix:
@@ -180,7 +180,7 @@ class BasePlugin:
         return candidate
 
     def _update_device_prefix(self, asset_tag, serial_number, server_name):
-        # Prioriteit voor herkenbare naam: asset tag -> serienummer -> server naam -> geconfigureerd host/IP.
+        # Priority for recognizable name: asset tag -> serial number -> server name -> configured host/IP.
         for raw in (asset_tag, serial_number, server_name, Parameters["Address"]):
             identifier = self._clean_identifier(raw)
             if identifier:
@@ -202,10 +202,10 @@ class BasePlugin:
                         sValue=Devices[unit].sValue,
                         Name=target_name,
                     )
-        Domoticz.Log(f"Device naam-prefix ingesteld op: {self._device_prefix or '(geen)'}")
+        Domoticz.Log(f"Device name prefix set to: {self._device_prefix or '(none)'}")
 
     def _connect_and_update(self):
-        """Maak verbinding met iLO en ververs alle sensoren."""
+        """Connect to iLO and refresh all sensors."""
         host     = Parameters["Address"]
         port     = int(Parameters["Port"])
         login    = Parameters["Username"]
@@ -219,51 +219,51 @@ class BasePlugin:
             )
             self._fetch_and_push(ilo)
         except hpilo.IloLoginFailed as err:
-            Domoticz.Error(f"iLO login mislukt: {err}")
+            Domoticz.Error(f"iLO login failed: {err}")
         except hpilo.IloCommunicationError as err:
-            Domoticz.Error(f"iLO communicatiefout: {err}")
+            Domoticz.Error(f"iLO communication error: {err}")
         except hpilo.IloError as err:
-            Domoticz.Error(f"iLO fout: {err}")
+            Domoticz.Error(f"iLO error: {err}")
         except Exception as err:  # noqa: BLE001
-            Domoticz.Error(f"Onverwachte fout bij iLO-verbinding: {err}")
+            Domoticz.Error(f"Unexpected error during iLO connection: {err}")
 
     def _fetch_and_push(self, ilo: hpilo.Ilo):
-        """Haal iLO-data op en sla op in Domoticz-apparaten."""
+        """Fetch iLO data and store in Domoticz devices."""
 
         def safe_get(func, *args, default="N/A"):
-            """Roep iLO-methode aan en vang fouten op."""
+            """Call iLO method and catch errors."""
             try:
                 result = func(*args)
                 return result if result is not None else default
             except Exception as err:  # noqa: BLE001
-                Domoticz.Error(f"Fout bij {func.__name__}: {err}")
+                Domoticz.Error(f"Error in {func.__name__}: {err}")
                 return default
 
         def update(unit, value):
-            """Ververs Domoticz-apparaat als het bestaat."""
+            """Update Domoticz device if it exists."""
             if unit in Devices:
                 svalue = str(value) if not isinstance(value, str) else value
                 Devices[unit].Update(nValue=0, sValue=svalue)
                 if self._debug:
-                    Domoticz.Log(f"Unit {unit} bijgewerkt: {svalue[:120]}")
+                    Domoticz.Log(f"Unit {unit} updated: {svalue[:120]}")
 
-        # --- Server naam & FQDN ---
+        # --- Server name & FQDN ---
         server_name = safe_get(ilo.get_server_name)
         update(UNIT_SERVER_NAME, server_name)
         update(UNIT_SERVER_FQDN, safe_get(ilo.get_server_fqdn))
 
-        # --- Voedingsstatus ---
+        # --- Power status ---
         power_status = safe_get(ilo.get_host_power_status)
         update(UNIT_POWER_STATUS, power_status)
 
-        # --- Ingeschakeld sinds (omgezet naar dagen/uren/minuten) ---
+        # --- Powered on since (converted to days/hours/minutes) ---
         power_on_time = safe_get(ilo.get_server_power_on_time, default=0)
         try:
             mins = int(power_on_time)
             days = mins // 1440
             hours = (mins % 1440) // 60
             remaining_mins = mins % 60
-            power_on_str = f"{days}d {hours}u {remaining_mins}min"
+            power_on_str = f"{days}d {hours}h {remaining_mins}min"
         except (ValueError, TypeError):
             power_on_str = str(power_on_time)
         update(UNIT_POWER_ON_TIME, power_on_str)
@@ -276,10 +276,10 @@ class BasePlugin:
             asset_val = str(asset_raw)
         update(UNIT_ASSET_TAG, asset_val)
 
-        # --- UID-status ---
+        # --- UID status ---
         update(UNIT_UID_STATUS, safe_get(ilo.get_uid_status))
 
-        # --- Gezondheid (Alert device: 0=groen/OK, 1=geel, 2=oranje, 4=rood) ---
+        # --- Health (Alert device: 0=green/OK, 1=yellow, 2=orange, 4=red) ---
         health = safe_get(ilo.get_embedded_health)
         if isinstance(health, dict):
             summary = health.get("health_at_a_glance", {})
@@ -291,16 +291,16 @@ class BasePlugin:
                     if status_up != "OK" and "NOT INSTALL" not in status_up:
                         not_ok.append(f"{component.replace('_',' ').title()}: {status}")
             if not_ok:
-                alert_level = 4  # rood
+                alert_level = 4  # red
                 alert_msg = " | ".join(not_ok)
             else:
-                alert_level = 1  # groen
-                alert_msg = "Alles OK"
+                alert_level = 1  # green
+                alert_msg = "All OK"
             if UNIT_HEALTH in Devices:
                 Devices[UNIT_HEALTH].Update(nValue=alert_level, sValue=alert_msg)
         else:
             if UNIT_HEALTH in Devices:
-                Devices[UNIT_HEALTH].Update(nValue=4, sValue="Gezondheidsdata niet beschikbaar")
+                Devices[UNIT_HEALTH].Update(nValue=4, sValue="Health data not available")
 
         # --- Fans ---
         if isinstance(health, dict):
@@ -342,15 +342,15 @@ class BasePlugin:
         else:
             update(UNIT_FANS, "0")
 
-        # --- Netwerkinstellingen ---
+        # --- Network settings ---
         net = safe_get(ilo.get_network_settings)
         if isinstance(net, dict):
             parts = []
             for key, label in [
                 ("ip_address",          "IP"),
-                ("subnet_mask",         "Masker"),
+                ("subnet_mask",         "Mask"),
                 ("gateway_ip_address",  "Gateway"),
-                ("dns_name",            "DNS naam"),
+                ("dns_name",            "DNS name"),
                 ("mac_address",         "MAC"),
             ]:
                 if net.get(key):
@@ -359,10 +359,10 @@ class BasePlugin:
         else:
             update(UNIT_NETWORK_SETTINGS, str(net)[:300])
 
-        # --- Host data: toon alleen de meest relevante velden ---
+        # --- Host data: show only the most relevant fields ---
         IMPORTANT_KEYS_ORDER = ("product name", "serial number", "family", "date")
         IMPORTANT_KEYS = set(IMPORTANT_KEYS_ORDER)
-        NO_LABEL_KEYS = {"product name"}  # toon alleen de waarde, zonder label
+        NO_LABEL_KEYS = {"product name"}  # show only the value, without label
 
         def _fmt_host_field(norm, lbl, val):
             return val if norm in NO_LABEL_KEYS else f"{lbl}: {val}"
@@ -418,28 +418,28 @@ class BasePlugin:
             else:
                 update(UNIT_ILO_FIRMWARE, str(ilo_info))
         except Exception as err:
-            Domoticz.Error(f"Fout bij get_fw_version: {err}")
+            Domoticz.Error(f"Error in get_fw_version: {err}")
 
         # --- Storage / RAID ---
         try:
-            # Hergebruik de reeds opgehaalde health-data (geen extra netwerkaanroep nodig)
+            # Reuse already fetched health data (no extra network call needed)
             storage = health
-            # Log alle beschikbare health keys en hun type (inclusief None-waarden)
+            # Log all available health keys and their type (including None values)
             if isinstance(storage, dict) and self._debug:
                 for k, v in storage.items():
                     Domoticz.Log(f"DEBUG health[{k}]: {str(v)[:200]}")
-            # Gebruik `or []` zodat ook een None-waarde correct als lege lijst behandeld wordt
+            # Use `or []` so that None values are also correctly handled as empty list
             storage_raw = storage.get("storage") if isinstance(storage, dict) else None
             if self._debug:
                 Domoticz.Log(f"DEBUG storage raw type={type(storage_raw).__name__} value={str(storage_raw)[:200]}")
             not_ok = []
             ok_parts = []
 
-            # Normaliseer storage_data naar een lijst van controller-dicts
+            # Normalize storage_data to a list of controller dicts
             if isinstance(storage_raw, list):
                 storage_list = storage_raw
             elif isinstance(storage_raw, dict):
-                # Sommige iLO-versies geven een dict terug: {naam: {...}, ...}
+                # Some iLO versions return a dict: {name: {...}, ...}
                 storage_list = list(storage_raw.values())
             else:
                 storage_list = []
@@ -493,18 +493,18 @@ class BasePlugin:
                     Devices[UNIT_STORAGE].Update(nValue=4, sValue=" | ".join(not_ok))
             elif ok_parts:
                 if UNIT_STORAGE in Devices:
-                    Devices[UNIT_STORAGE].Update(nValue=1, sValue="Alles OK: " + ", ".join(ok_parts))
+                    Devices[UNIT_STORAGE].Update(nValue=1, sValue="All OK: " + ", ".join(ok_parts))
             else:
                 if UNIT_STORAGE in Devices:
-                    Devices[UNIT_STORAGE].Update(nValue=0, sValue="Niet beschikbaar via iLO")
+                    Devices[UNIT_STORAGE].Update(nValue=0, sValue="Not available via iLO")
         except Exception as err:
-            Domoticz.Error(f"Fout bij storage: {err}")
+            Domoticz.Error(f"Error in storage: {err}")
 
-        Domoticz.Log("HP iLO sensoren bijgewerkt.")
+        Domoticz.Log("HP iLO sensors updated.")
 
 
 # ---------------------------------------------------------------------------
-# Domoticz plugin-interface - verplichte globale functies
+# Domoticz plugin interface - required global functions
 # ---------------------------------------------------------------------------
 
 _plugin = BasePlugin()
