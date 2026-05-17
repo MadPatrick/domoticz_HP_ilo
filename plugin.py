@@ -253,10 +253,11 @@ class BasePlugin:
 
         # Storage
         try:
-            system_uri = self._get_first_member_uri(rf, systems_path)
-            storage    = rf.get(system_uri + "/Storage")
-            drives     = []
-            any_bad    = False
+            system_uri   = self._get_first_member_uri(rf, systems_path)
+            storage_path = system_uri.rstrip("/") + "/Storage"
+            storage      = rf.get(storage_path)
+            drives       = []
+            any_bad      = False
 
             for member in storage.get("Members", []):
                 uri = member.get("@odata.id")
@@ -284,7 +285,28 @@ class BasePlugin:
                         pass
 
             if not drives:
-                Devices[UNIT_STORAGE].Update(nValue=0, sValue="No drives found")
+                # iLO 4 fallback: no individual drive data, check controller health only
+                bad, ok = [], []
+                for member in storage.get("Members", []):
+                    uri = member.get("@odata.id")
+                    if not uri:
+                        continue
+                    try:
+                        ctrl   = rf.get(uri)
+                        name   = ctrl.get("Name", "Controller")
+                        status = ctrl.get("Status", {}).get("Health", "Unknown")
+                        if str(status).upper() != "OK":
+                            bad.append("{}: {}".format(name, status))
+                        else:
+                            ok.append(name)
+                    except Exception:
+                        pass
+                if bad:
+                    Devices[UNIT_STORAGE].Update(nValue=4, sValue=" | ".join(bad))
+                elif ok:
+                    Devices[UNIT_STORAGE].Update(nValue=1, sValue="OK: {}".format(", ".join(ok)))
+                else:
+                    Devices[UNIT_STORAGE].Update(nValue=0, sValue="No storage data")
             else:
                 parts = []
                 for i, d in enumerate(drives, 1):
@@ -296,9 +318,12 @@ class BasePlugin:
                 Devices[UNIT_STORAGE].Update(nValue=nValue, sValue=sValue)
 
         except Exception as err:
-            Domoticz.Error("Storage error: {}".format(err))
+            if "404" in str(err):
+                Devices[UNIT_STORAGE].Update(nValue=0, sValue="Not supported by this iLO version")
+            else:
+                Domoticz.Error("Storage error: {}".format(err))
 
-        Domoticz.Log("Redfish update completed")
+#        Domoticz.Log("Redfish update completed")
 
 # --- Domoticz Hooks ---
 
