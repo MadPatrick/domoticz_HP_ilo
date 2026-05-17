@@ -54,14 +54,6 @@ In Domoticz, go to **Settings → Hardware** and add a new hardware device of ty
 | Protocol | Connection protocol | `Automatic` |
 | Debug | Enable or disable verbose logging | `Off` |
 
-**Protocol options:**
-
-| Value | Description |
-|-------|-------------|
-| `Automatic` | Let the plugin choose the best protocol |
-| `ILO (XML/SSL)` | Force iLO XML over SSL |
-| `LIPB (local)` | Force local LIPB interface |
-
 ---
 
 ## Created devices
