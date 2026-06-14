@@ -2,10 +2,10 @@
 HP Integrated Lights-Out (iLO) - Domoticz Python Plugin
 
 Author: MadPatrick
-Version: 1.0.1
+Version: 1.1.0
 
 <plugin key="hp_ilo" name="HP Integrated Lights-Out (iLO)" author="MadPatrick"
-        version="1.0.1" wikilink="https://www.home-assistant.io/integrations/hp_ilo" externallink="https://github.com/MadPatrick/HP_ilo">
+        version="1.1.0" wikilink="https://www.home-assistant.io/integrations/hp_ilo" externallink="https://github.com/MadPatrick/HP_ilo">
     <description>
         <br/><h2>HP Integrated Lights-Out (iLO)</h2>
         Reads sensor data from an HP iLO interface.
