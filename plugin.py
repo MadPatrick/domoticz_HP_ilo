@@ -2,13 +2,13 @@
 HP Integrated Lights-Out (iLO) - Domoticz Python Plugin
 
 Author: MadPatrick
-Version: 1.2.7
+Version: 1.2.8
 
 <plugin key="hp_ilo" name="HP Integrated Lights-Out (iLO)" author="MadPatrick"
-        version="1.2.7" externallink="https://github.com/MadPatrick/HP_ilo">
+        version="1.2.8" externallink="https://github.com/MadPatrick/HP_ilo">
     <description>
         <h2>HP Integrated Lights-Out (iLO)</h2>
-        <p><strong>Version:</strong> 1.2.7</p>
+        <p><strong>Version:</strong> 1.2.8</p>
         <p>Monitors and configures an HPE server through the iLO Redfish API.</p>
         <h3>Features</h3>
         <ul>
@@ -206,6 +206,11 @@ class BasePlugin:
     # margin on top of that for the one in-flight HTTP request to complete.
     WORKER_STOP_TIMEOUT = RedfishILO.CONNECT_TIMEOUT + 2
 
+    # How long (seconds) a command received before Parameters is available
+    # (e.g. Domoticz replaying a queued/scene command right at process start,
+    # before onStart() has run) is held for retry before being dropped.
+    PENDING_COMMAND_MAX_AGE_SECS = 120
+
     def __init__(self):
         self.debug               = False
         self.poll_interval       = 300
@@ -245,6 +250,10 @@ class BasePlugin:
         self._fetch_in_progress = False
         self._fetch_thread = None
         self._result_queue = queue.Queue()
+
+        # Commands received before Parameters was ready, queued for retry on
+        # the next onHeartbeat tick(s). Each entry: (Unit, Command, Level, Color, first_seen_ts).
+        self._pending_commands = []
 
     @property
     def _devices(self):
@@ -457,6 +466,8 @@ class BasePlugin:
         if self._stop_event.is_set():
             return
 
+        self._flush_pending_commands()
+
         # Process any fetch cycle the background worker finished since the
         # last tick - main/callback thread, safe here to touch Devices[...].
         while True:
@@ -479,6 +490,43 @@ class BasePlugin:
         # Redfish call that would only delay it further.
         if self._stop_event.is_set():
             return
+        self._dispatch_command(Unit, Command, Level, Color, first_seen=None)
+
+    def _flush_pending_commands(self):
+        """Retry any commands that arrived before Parameters was ready. Called
+        every onHeartbeat tick; a no-op when nothing is queued."""
+        if not self._pending_commands:
+            return
+
+        pending, self._pending_commands = self._pending_commands, []
+        for Unit, Command, Level, Color, first_seen in pending:
+            self._dispatch_command(Unit, Command, Level, Color, first_seen=first_seen)
+
+    def _dispatch_command(self, Unit, Command, Level, Color, first_seen):
+        """Route a command to its handler. If Parameters isn't ready yet
+        (Domoticz can replay a queued/scene command before onStart() has run),
+        queue it for retry (up to PENDING_COMMAND_MAX_AGE_SECS) instead of
+        letting it fail deep inside Redfish connection setup - `first_seen` is
+        None for a fresh command from Domoticz, or the original queue
+        timestamp when called from _flush_pending_commands."""
+        if not self._parameters:
+            now = time.time()
+            queued_since = first_seen if first_seen is not None else now
+            if now - queued_since > self.PENDING_COMMAND_MAX_AGE_SECS:
+                Domoticz.Error(
+                    "Giving up on command for Unit {}: Domoticz Parameters still not available after {}s.".format(
+                        Unit, int(now - queued_since)
+                    )
+                )
+                return
+            self._pending_commands.append((Unit, Command, Level, Color, queued_since))
+            if first_seen is None:
+                Domoticz.Status(
+                    "Domoticz Parameters not available yet (plugin still starting up); "
+                    "command for Unit {} queued for retry.".format(Unit)
+                )
+            return
+
         if Unit == UNIT_MIN_FAN_SPEED:
             self._handle_min_fan_speed_command(Command, Level)
             return
